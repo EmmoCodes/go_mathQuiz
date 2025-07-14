@@ -33,20 +33,22 @@ func ReadCSV() ([][]string, error) {
 }
 
 func GetResults(userInput *string) error {
-	userValInt, resultInt, err := CompareNumbers(userInput)
+	winVal, loseVal, err := GetInputs(userInput)
 	if err != nil {
 		fmt.Println(err)
-		return errors.New("Failed to compare inputs.")
+		return errors.New("Failed to get inputs.")
 	}
-	fmt.Println("jojojojo")
-	comparedVal := resultInt - userValInt
-	fmt.Println(comparedVal)
+
+	fmt.Printf("Right solved: %v\n", winVal)
+	fmt.Printf("Not right: %v\n", loseVal)
+
 	return nil
 }
 
-func CompareNumbers(userInput *string) (int, int, error) {
+func GetInputs(userInput *string) (int, int, error) {
 	var lastVal string
-	var lastValInt, userInputInt, comparedVal int
+	var comparedVal int
+	var winCounter, loseCounter int
 
 	records, err := ReadCSV()
 	if err != nil {
@@ -56,7 +58,7 @@ func CompareNumbers(userInput *string) (int, int, error) {
 
 	fmt.Println("Please solve following calculation: ")
 	for _, val := range records {
-		fmt.Println(val)
+		fmt.Println(val[0])
 		var input string
 		fmt.Scanln(&input)
 
@@ -75,14 +77,14 @@ func CompareNumbers(userInput *string) (int, int, error) {
 		comparedVal = lastValInt - userInputInt
 
 		if comparedVal == 0 {
-			fmt.Println("Nice!")
+			winCounter++
 		} else {
-			fmt.Println("Wrong sorry!")
+			loseCounter++
 		}
 
 	}
 
-	return lastValInt, userInputInt, nil
+	return winCounter, loseCounter, nil
 }
 
 func ConvertToInt(val string) (int, error) {
