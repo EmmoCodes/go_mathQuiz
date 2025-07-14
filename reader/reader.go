@@ -14,7 +14,6 @@ func ReadCSV() ([][]string, error) {
 	fmt.Scan(&file)
 
 	f, err := os.Open(file)
-
 	if err != nil {
 		fmt.Println(err)
 		defer f.Close()
@@ -41,6 +40,17 @@ func GetResults(userInput *string) error {
 
 	fmt.Printf("Right solved: %v\n", winVal)
 	fmt.Printf("Not right: %v\n", loseVal)
+
+	switch loseVal {
+	case 0:
+		fmt.Println("BRAIN!")
+	case 1:
+		fmt.Println("AWESOME!")
+	case 2:
+		fmt.Println("GOOD!")
+	default:
+		fmt.Println("You did good! Keep learning.")
+	}
 
 	return nil
 }
