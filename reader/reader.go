@@ -2,10 +2,11 @@ package reader
 
 import (
 	"encoding/csv"
-	"errors"
 	"fmt"
 	"os"
 	"strconv"
+	"sync"
+	"time"
 )
 
 func ReadCSV() ([][]string, error) {
@@ -15,28 +16,23 @@ func ReadCSV() ([][]string, error) {
 
 	f, err := os.Open(file)
 	if err != nil {
-		fmt.Println(err)
-		defer f.Close()
-		return nil, errors.New("Failed to open file.")
+		return nil, fmt.Errorf("Failed to open file.\nerr: %v", err)
 	}
 
 	csvReaver := csv.NewReader(f)
 	records, err := csvReaver.ReadAll()
 	if err != nil {
-		fmt.Println(err)
 		defer f.Close()
-		return nil, errors.New("Failed to read file.")
+		return nil, fmt.Errorf("Failed to read file.\nerr: %v", err)
 	}
 	defer f.Close()
 	return records, nil
 }
 
 func GetResults(userInput *string) error {
-	winVal, loseVal, err := GetInputs(userInput)
-	if err != nil {
-		fmt.Println(err)
-		return errors.New("Failed to get inputs.")
-	}
+	var wg sync.WaitGroup
+
+	winVal, loseVal := GetInputs(userInput, &wg)
 
 	fmt.Printf("Right solved: %v\n", winVal)
 	fmt.Printf("Not right: %v\n", loseVal)
@@ -55,52 +51,71 @@ func GetResults(userInput *string) error {
 	return nil
 }
 
-func GetInputs(userInput *string) (int, int, error) {
-	var lastVal string
+func GetInputs(userInput *string, wg *sync.WaitGroup) (int, int) {
+	var lastVal, userTimer string
 	var comparedVal int
 	var winCounter, loseCounter int
 
 	records, err := ReadCSV()
 	if err != nil {
-		fmt.Println(err)
-		return 0, 0, errors.New("Failed to read in result")
+		return 0, 0
 	}
+
+	fmt.Println("How long your timer should be?")
+	fmt.Scanln(&userTimer)
+	timerToInt, err := ConvertToInt(userTimer)
+	if err != nil {
+		return 0, 0
+	}
+
+	fmt.Printf("Thanks. Your timer is set to: %.0v sec.\n", timerToInt)
 
 	fmt.Println("Please solve following calculation: ")
-	for _, val := range records {
-		fmt.Println(val[0])
-		var input string
-		fmt.Scanln(&input)
 
-		// take len - 1 to get the last element
-		lastVal = val[len(val)-1]
+	timeout := time.After(time.Duration(timerToInt) * time.Second)
+	wg.Add(1)
+	go func() {
+		for _, val := range records {
+			fmt.Println(val[0])
+			var input string
+			fmt.Scanln(&input)
 
-		userInputInt, err := ConvertToInt(input)
-		if err != nil {
-			return 0, 0, errors.New("Failed to convert string.")
+			// take len - 1 to get the last element
+			lastVal = val[len(val)-1]
+			if len(lastVal) > 0 {
+
+				userInputInt, err := ConvertToInt(input)
+				if err != nil {
+					return
+				}
+
+				lastValInt, err := ConvertToInt(lastVal)
+				if err != nil {
+					return
+				}
+				comparedVal = lastValInt - userInputInt
+
+				if comparedVal == 0 {
+					winCounter++
+				} else {
+					loseCounter++
+				}
+			} else {
+				return
+			}
 		}
+	}()
 
-		lastValInt, err := ConvertToInt(lastVal)
-		if err != nil {
-			return 0, 0, errors.New("Failed to convert string.")
-		}
-		comparedVal = lastValInt - userInputInt
-
-		if comparedVal == 0 {
-			winCounter++
-		} else {
-			loseCounter++
-		}
-
-	}
-
-	return winCounter, loseCounter, nil
+	<-timeout
+	fmt.Println("Time's up!")
+	defer wg.Done()
+	return winCounter, loseCounter
 }
 
 func ConvertToInt(val string) (int, error) {
 	valInt, err := strconv.Atoi(val)
 	if err != nil {
-		return 0, errors.New("Failed to convert string into Int")
+		return 0, fmt.Errorf("Failed to convert to integer.\nerr: %v", err)
 	}
 	return valInt, nil
 }
